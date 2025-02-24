@@ -9,6 +9,7 @@ export const updateRoleToEducator = async (req, res) => {
       return res.status(400).json({ success: false, message: 'User ID is required and missing' });
     }
 
+    // Update user metadata to set role to 'educator'
     await clerkClient.users.updateUserMetadata(userId, {
       publicMetadata: {
         role: 'educator',

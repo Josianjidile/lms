@@ -1,6 +1,5 @@
 import React, { useEffect, useContext } from "react";
-import { assets } from "../../assets/assets";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
 import { AppContext } from "../../context/AppContext";
 
@@ -12,12 +11,12 @@ const Navbar = () => {
   const { isEducator } = useContext(AppContext);
 
   const { openSignIn } = useClerk();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();  // Adding `isLoaded` to check if session is loaded
 
   // Redirect user to homepage after signing in
   useEffect(() => {
     if (user) {
-      navigate("/"); // Redirect to home
+      navigate("/");  // Redirect to home
     }
   }, [user, navigate]);
 
@@ -28,6 +27,10 @@ const Navbar = () => {
       afterSignUpUrl: "/",
     });
   };
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;  // Show loading while Clerk is loading user session
+  }
 
   return (
     <div

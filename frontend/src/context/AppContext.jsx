@@ -1,31 +1,34 @@
 import { createContext, useEffect, useState } from "react";
-import { dummyCourses } from "../assets/assets";
 import { useNavigate } from "react-router-dom";
-import humanizeDuration from "humanize-duration";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { dummyCourses } from "../assets/assets"; // You can replace this with an actual API call to fetch courses
+import humanizeDuration from "humanize-duration";
 
 export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
-  const currency = import.meta.env.VITE_CURRENCY;
-  const [allCourses, setAllCourses] = useState([]);
-  const navigate = useNavigate();
-  const [isEducator, setIsEducator] = useState(true);
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const currency = import.meta.env.VITE_CURRENCY; // You can adjust how you load your environment variables
+  const [allCourses, setAllCourses] = useState([]); // Store all courses
+  const navigate = useNavigate(); // React Router hook to navigate between pages
+  const [isEducator, setIsEducator] = useState(true); // Check if the user is an educator
+  const [enrolledCourses, setEnrolledCourses] = useState([]); // Store courses the user is enrolled in
 
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { getToken } = useAuth(); // Clerk's useAuth hook to get the user's authentication token
+  const { user } = useUser(); // Clerk's useUser hook to get user information
 
-  // Fetch all courses
+  // Fetch all courses (replace with your actual API or data fetching logic)
   const fetchAllCourses = async () => {
-    setAllCourses(dummyCourses);
+    setAllCourses(dummyCourses); // Replace dummyCourses with actual API call if needed
   };
 
-  // Function to calculate the average rating of a course
+  // Fetch user enrolled courses (replace with actual API)
+  const fetchUserEnrolledCourses = async () => {
+    setEnrolledCourses(dummyCourses); // Replace dummyCourses with an actual call to get user's enrolled courses
+  };
+
+  // Calculate average rating of a course
   const calculateRating = (course) => {
-    if (course.courseRatings.length === 0) {
-      return 0;
-    }
+    if (course.courseRatings.length === 0) return 0;
     let totalRating = 0;
     course.courseRatings.forEach((rating) => {
       totalRating += rating.rating;
@@ -33,14 +36,14 @@ export const AppContextProvider = (props) => {
     return totalRating / course.courseRatings.length;
   };
 
-  // Function to calculate chapter time
+  // Calculate chapter time duration
   const calculateChapterTime = (chapter) => {
     let time = 0;
     chapter.chapterContent.map((lecture) => (time += lecture.lectureDuration));
     return humanizeDuration(time * 60 * 1000, { units: ["h", "m"] });
   };
 
-  // Function to calculate course duration
+  // Calculate course total duration
   const calculateCourseDuration = (course) => {
     let time = 0;
     course.courseContent.map((chapter) =>
@@ -49,7 +52,7 @@ export const AppContextProvider = (props) => {
     return humanizeDuration(time * 60 * 1000, { units: ["h", "m"] });
   };
 
-  // Function to calculate number of lectures in a course
+  // Calculate the total number of lectures in a course
   const calculateNoOfLectures = (course) => {
     let totalLectures = 0;
     course.courseContent.forEach((chapter) => {
@@ -60,24 +63,21 @@ export const AppContextProvider = (props) => {
     return totalLectures;
   };
 
-  // Fetch user enrolled courses
-  const fetchUserEnrolledCourses = async () => {
-    setEnrolledCourses(dummyCourses);
-  };
-
-  useEffect(() => {
-    fetchAllCourses();
-    fetchUserEnrolledCourses();
-  }, []);
-
+  // Log the token for debugging
   const logToken = async () => {
     const token = await getToken();
-    console.log(token);
+    console.log("User token:", token); // Log the token to the console for debugging
   };
 
   useEffect(() => {
+    fetchAllCourses(); // Fetch all courses on component mount
+    fetchUserEnrolledCourses(); // Fetch the user's enrolled courses on component mount
+  }, []);
+
+  // Log the token once the user is available
+  useEffect(() => {
     if (user) {
-      logToken();
+      logToken(); // Log the token to the console when the user is authenticated
     }
   }, [user]);
 
@@ -85,12 +85,12 @@ export const AppContextProvider = (props) => {
     currency,
     allCourses,
     navigate,
-    calculateRating,
     isEducator,
+    enrolledCourses,
+    calculateRating,
     calculateCourseDuration,
     calculateNoOfLectures,
     calculateChapterTime,
-    enrolledCourses,
     fetchUserEnrolledCourses,
   };
 

@@ -1,16 +1,16 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import connectDB from "./config/mongodb.js";
-import { clerkWebhook } from "./controllers/webhooks.js";
-import educatorRouter from "./routes/educatorRoutes.js";
 import { clerkMiddleware } from "@clerk/express";
+import connectDB from "./config/mongodb.js";
+import educatorRouter from "./routes/educatorRoutes.js";
+import { clerkWebhook } from "./controllers/webhooks.js";
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(clerkMiddleware());
+app.use(clerkMiddleware()); // Use Clerk middleware to authenticate requests
 app.use(express.json());
 
 // Connect to MongoDB
