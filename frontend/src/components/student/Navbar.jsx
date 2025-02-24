@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from "react";
+import React, { useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
 import { AppContext } from "../../context/AppContext";
@@ -12,16 +12,8 @@ const Navbar = () => {
   const { isEducator } = useContext(AppContext);
 
   const { openSignIn } = useClerk();
-  const { user, isLoaded } = useUser();  // Adding `isLoaded` to check if session is loaded
+  const { user, isLoaded } = useUser();
 
-  // Redirect user to homepage after signing in
-  useEffect(() => {
-    if (user) {
-      navigate("/");  // Redirect to home
-    }
-  }, [user, navigate]);
-
-  // Open Clerk's sign-in modal with redirect settings
   const handleSignIn = () => {
     openSignIn({
       afterSignInUrl: "/",
@@ -30,7 +22,7 @@ const Navbar = () => {
   };
 
   if (!isLoaded) {
-    return <div>Loading...</div>;  // Show loading while Clerk is loading user session
+    return <div>Loading...</div>;
   }
 
   return (
@@ -39,7 +31,6 @@ const Navbar = () => {
         isCourseListPage ? "bg-white" : "bg-cyan-100/70"
       }`}
     >
-      {/* Logo */}
       <img
         onClick={() => navigate("/")}
         src={assets.logo}
@@ -47,7 +38,6 @@ const Navbar = () => {
         className="w-28 lg:w-32 cursor-pointer"
       />
 
-      {/* Navigation Buttons for Desktop */}
       <div className="hidden md:flex text-gray-500 items-center gap-5">
         {user && (
           <>
@@ -72,7 +62,6 @@ const Navbar = () => {
         )}
       </div>
 
-      {/* Navigation Buttons for Mobile */}
       <div className="md:hidden flex items-center gap-2 sm:gap-3">
         {user && (
           <>

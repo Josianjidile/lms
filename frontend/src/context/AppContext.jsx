@@ -1,29 +1,37 @@
 import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { dummyCourses } from "../assets/assets"; // You can replace this with an actual API call to fetch courses
+import { dummyCourses } from "../assets/assets"; // Replace with actual API call
 import humanizeDuration from "humanize-duration";
 
 export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
-  const currency = import.meta.env.VITE_CURRENCY; // You can adjust how you load your environment variables
-  const [allCourses, setAllCourses] = useState([]); // Store all courses
-  const navigate = useNavigate(); // React Router hook to navigate between pages
-  const [isEducator, setIsEducator] = useState(true); // Check if the user is an educator
-  const [enrolledCourses, setEnrolledCourses] = useState([]); // Store courses the user is enrolled in
+  const currency = import.meta.env.VITE_CURRENCY;
+  const [allCourses, setAllCourses] = useState([]);
+  const navigate = useNavigate();
+  const [isEducator, setIsEducator] = useState(false); // Default to false
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
 
-  const { getToken } = useAuth(); // Clerk's useAuth hook to get the user's authentication token
-  const { user } = useUser(); // Clerk's useUser hook to get user information
+  const { getToken } = useAuth();
+  const { user } = useUser();
 
-  // Fetch all courses (replace with your actual API or data fetching logic)
+  // Fetch all courses
   const fetchAllCourses = async () => {
-    setAllCourses(dummyCourses); // Replace dummyCourses with actual API call if needed
+    setAllCourses(dummyCourses); // Replace with actual API call
   };
 
-  // Fetch user enrolled courses (replace with actual API)
+  // Fetch user enrolled courses
   const fetchUserEnrolledCourses = async () => {
-    setEnrolledCourses(dummyCourses); // Replace dummyCourses with an actual call to get user's enrolled courses
+    setEnrolledCourses(dummyCourses); // Replace with actual API call
+  };
+
+  // Check if the user is an educator
+  const checkEducatorRole = async () => {
+    if (user) {
+      const role = user.publicMetadata?.role;
+      setIsEducator(role === "educator");
+    }
   };
 
   // Calculate average rating of a course
@@ -63,21 +71,10 @@ export const AppContextProvider = (props) => {
     return totalLectures;
   };
 
-  // Log the token for debugging
-  const logToken = async () => {
-    console.log(await getToken());  // Ensure you call the token correctly
-  };
-
   useEffect(() => {
-    fetchAllCourses(); // Fetch all courses on component mount
-    fetchUserEnrolledCourses(); // Fetch the user's enrolled courses on component mount
-  }, []);
-
-  // Log the token once the user is available
-  useEffect(() => {
-    if (user) {
-      logToken(); // Log the token to the console when the user is authenticated
-    }
+    fetchAllCourses();
+    fetchUserEnrolledCourses();
+    checkEducatorRole(); // Check educator role on user change
   }, [user]);
 
   const value = {
