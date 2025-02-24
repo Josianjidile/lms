@@ -1,17 +1,25 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { assets } from "../../assets/assets";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
 import { useContext } from "react";
 import { AppContext } from "../../context/AppContext";
 
 const Navbar = () => {
   const location = useLocation(); // Use the useLocation hook to access the current path
+  const navigate = useNavigate(); // Use the useNavigate hook for programmatic navigation
   const isCourseListPage = location.pathname.includes("/course-list");
-  const { navigate,isEducator } = useContext(AppContext);
+  const { isEducator } = useContext(AppContext);
 
   const { openSignIn } = useClerk();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser(); // Use isLoaded to check if Clerk has finished loading
+
+  // Redirect to home page after successful login
+  useEffect(() => {
+    if (isLoaded && user && location.pathname === "/sign-in") {
+      navigate("/"); // Redirect to home page
+    }
+  }, [isLoaded, user, location.pathname, navigate]);
 
   return (
     <div
@@ -83,7 +91,7 @@ const Navbar = () => {
             className="bg-blue-600 text-white px-3 py-1 rounded-full"
             aria-label="Create Account"
           >
-            Create Account {/* <img src={assets.user_icon} alt="" /> */}
+            Create Account
           </button>
         )}
       </div>
