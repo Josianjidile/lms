@@ -1,25 +1,33 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useContext } from "react";
 import { assets } from "../../assets/assets";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
-import { useContext } from "react";
 import { AppContext } from "../../context/AppContext";
 
 const Navbar = () => {
-  const location = useLocation(); // Use the useLocation hook to access the current path
-  const navigate = useNavigate(); // Use the useNavigate hook for programmatic navigation
+  const location = useLocation();
   const isCourseListPage = location.pathname.includes("/course-list");
+
+  const navigate = useNavigate();
   const { isEducator } = useContext(AppContext);
 
   const { openSignIn } = useClerk();
-  const { user, isLoaded } = useUser(); // Use isLoaded to check if Clerk has finished loading
+  const { user } = useUser();
 
-  // Redirect to home page after successful login
+  // Redirect user to homepage after signing in
   useEffect(() => {
-    if (isLoaded && user && location.pathname === "/sign-in") {
-      navigate("/"); // Redirect to home page
+    if (user) {
+      navigate("/"); // Redirect to home
     }
-  }, [isLoaded, user, location.pathname, navigate]);
+  }, [user, navigate]);
+
+  // Open Clerk's sign-in modal with redirect settings
+  const handleSignIn = () => {
+    openSignIn({
+      afterSignInUrl: "/",
+      afterSignUpUrl: "/",
+    });
+  };
 
   return (
     <div
@@ -37,46 +45,36 @@ const Navbar = () => {
 
       {/* Navigation Buttons for Desktop */}
       <div className="hidden md:flex text-gray-500 items-center gap-5">
-        <div className="flex items-center gap-5">
-          {user && (
-            <>
-              <button
-                onClick={() => {
-                  navigate("/educator");
-                }}
-              >
-                {isEducator ? "Educator Dashboard" : "Become Educator"}
-              </button>
-              <Link to="/my-enrollments" aria-label="My Enrollments">
-                My Enrollments
-              </Link>
-            </>
-          )}
-          {user ? (
-            <UserButton />
-          ) : (
-            <button
-              onClick={() => openSignIn()}
-              className="bg-blue-600 text-white px-5 py-2 rounded-full"
-              aria-label="Create Account"
-            >
-              Create Account
+        {user && (
+          <>
+            <button onClick={() => navigate("/educator")}>
+              {isEducator ? "Educator Dashboard" : "Become Educator"}
             </button>
-          )}
-        </div>
+            <Link to="/my-enrollments" aria-label="My Enrollments">
+              My Enrollments
+            </Link>
+          </>
+        )}
+        {user ? (
+          <UserButton />
+        ) : (
+          <button
+            onClick={handleSignIn}
+            className="bg-blue-600 text-white px-5 py-2 rounded-full"
+            aria-label="Create Account"
+          >
+            Create Account
+          </button>
+        )}
       </div>
 
       {/* Navigation Buttons for Mobile */}
       <div className="md:hidden flex items-center gap-2 sm:gap-3">
         {user && (
           <>
-            <button
-              onClick={() => {
-                navigate("/educator");
-              }}
-            >
+            <button onClick={() => navigate("/educator")}>
               {isEducator ? "Educator Dashboard" : "Become Educator"}
-            </button>{" "}
+            </button>
             |
             <Link to="/my-enrollments" aria-label="My Enrollments">
               My Enrollments
@@ -87,7 +85,7 @@ const Navbar = () => {
           <UserButton />
         ) : (
           <button
-            onClick={() => openSignIn()}
+            onClick={handleSignIn}
             className="bg-blue-600 text-white px-3 py-1 rounded-full"
             aria-label="Create Account"
           >
