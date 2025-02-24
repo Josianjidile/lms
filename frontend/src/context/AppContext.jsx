@@ -65,8 +65,7 @@ export const AppContextProvider = (props) => {
 
   // Log the token for debugging
   const logToken = async () => {
-    const token = await getToken();
-    console.log("User token:", token); // Log the token to the console for debugging
+    console.log(await getToken());  // Ensure you call the token correctly
   };
 
   useEffect(() => {

@@ -9,19 +9,22 @@ import { clerkWebhook } from "./controllers/webhooks.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(clerkMiddleware()); // Use Clerk middleware to authenticate requests
-app.use(express.json());
 
 // Connect to MongoDB
-connectDB();
+await connectDB();
+
+app.use(cors());
+app.use(clerkMiddleware()); // Use Clerk middleware to authenticate requests
+
+
+
 
 // Routes
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 app.post("/clerk", express.json(), clerkWebhook);
-app.use('/api/educator', educatorRouter);
+app.use('/api/educator',express.json(), educatorRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
