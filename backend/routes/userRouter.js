@@ -1,6 +1,6 @@
 import express from "express";
-import { getEnrolledCourse, getUserData } from "../controllers/userController.js";
-import { purchaseCourse } from "../controllers/courseController.js";
+import { getEnrolledCourse, getUserData, purchaseCourse } from "../controllers/userController.js";
+
 
 
 const userRouter = express.Router();

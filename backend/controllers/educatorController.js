@@ -1,12 +1,13 @@
 import { clerkClient } from "@clerk/express";
 import Course from "../models/course.js";
 import { v2 as cloudinary } from "cloudinary";
-import Purchase from "../models/purchase.js";
-import User from "../models/user.js"; // Ensure User model is imported
+import Purchase from "../models/Purchase.js";
+import User from "../models/User.js"; 
 
 // Update user role to "educator"
 export const updateRoleToEducator = async (req, res) => {
   try {
+
     const userId = req.auth?.userId;
     if (!userId) return res.status(400).json({ success: false, message: "User ID is required" });
 
