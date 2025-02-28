@@ -100,45 +100,26 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "payment_intent.completed": {
-        const session = event.data.object;
-        console.log("Checkout session completed:", session.id);
+      case "payment_intent.succeeded": {
+        const payment_intent = event.data.object;
+        const paymentIntentId = payment_intent.id;
 
-        // Extract metadata
-        const { purchaseId } = session.metadata;
-        if (!purchaseId) {
-          console.error("Purchase ID not found in session metadata");
-          return res.status(400).json({ error: "Purchase ID not found" });
-        }
+        const session = await stripeInstance.checkout.sessions.list({
+          payment_intent: paymentIntentId,
+        });
+
+        const { purchaseId } = session.data[0].metadata;
 
         // Find the purchase record
         const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData) {
-          console.error("Purchase not found for ID:", purchaseId);
-          return res.status(400).json({ error: "Purchase not found" });
-        }
-
-        // Find user and course
         const userData = await User.findById(purchaseData.userId);
         const courseData = await Course.findById(purchaseData.courseId.toString());
 
-        if (!userData || !courseData) {
-          console.error("User or course data not found");
-          return res.status(400).json({ error: "Invalid user or course data" });
-        }
+        courseData.enrolledStudents.push(userData);
+        await courseData.save();
+        userData.enrolledCourses.push(courseData._id);
+        await userData.save();
 
-        // Enroll user in the course (if not already enrolled)
-        if (!courseData.enrolledStudents.includes(userData._id)) {
-          courseData.enrolledStudents.push(userData._id);
-          await courseData.save();
-        }
-
-        if (!userData.enrolledCourses.includes(courseData._id)) {
-          userData.enrolledCourses.push(courseData._id);
-          await userData.save();
-        }
-
-        // Update purchase status
         purchaseData.status = "completed";
         await purchaseData.save();
 
@@ -146,29 +127,19 @@ export const stripeWebhooks = async (req, res) => {
         break;
       }
 
-      case "payment_intent.expired": {
-        const session = event.data.object;
-        console.log("Checkout session expired:", session.id);
+      case "payment_intent.payment_failed": {
+        const payment_intent = event.data.object;
+        const paymentIntentId = payment_intent.id;
 
-        // Extract metadata
-        const { purchaseId } = session.metadata;
-        if (!purchaseId) {
-          console.error("Purchase ID not found in session metadata");
-          return res.status(400).json({ error: "Purchase ID not found" });
-        }
+        const session = await stripeInstance.checkout.sessions.list({
+          payment_intent: paymentIntentId,
+        });
 
-        // Find the purchase record
+        const { purchaseId } = session.data[0].metadata;
+
         const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData) {
-          console.error("Purchase not found for ID:", purchaseId);
-          return res.status(400).json({ error: "Purchase not found" });
-        }
-
-        // Update purchase status to failed
         purchaseData.status = "failed";
         await purchaseData.save();
-
-        console.log("Purchase marked as failed due to expired session");
         break;
       }
 
@@ -176,8 +147,7 @@ export const stripeWebhooks = async (req, res) => {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
-    // Always respond to Stripe with a 200 status code
-    res.json({ received: true });
+    res.status(200).json({ received: true });
   } catch (error) {
     console.error("Error processing webhook:", error);
     res.status(500).json({ error: "Internal server error" });
