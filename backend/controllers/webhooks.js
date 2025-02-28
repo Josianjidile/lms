@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -6,8 +7,6 @@ import User from "../models/User.js";
 import Purchase from "../models/Purchase.js";
 import Course from "../models/Course.js";
 import Stripe from "stripe";
-
-
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not set in the environment variables");
@@ -118,11 +117,16 @@ export const stripeWebhooks = async (req, res) => {
 
         const { purchaseId } = session.data[0].metadata;
 
+        // Log the purchaseId for debugging
+        console.log("Found purchaseId in metadata:", purchaseId);
+
         const purchaseData = await Purchase.findById(purchaseId);
         if (!purchaseData) {
           console.error("Purchase not found for ID:", purchaseId);
           return res.status(400).json({ error: "Purchase not found" });
         }
+
+        console.log("Found purchase data:", purchaseData);
 
         const userData = await User.findById(purchaseData.userId);
         const courseData = await Course.findById(purchaseData.courseId.toString());
@@ -132,14 +136,21 @@ export const stripeWebhooks = async (req, res) => {
           return res.status(400).json({ error: "Invalid user or course data" });
         }
 
+        console.log("Enrolling user in course:", userData, courseData);
+
         courseData.enrolledStudents.push(userData);
         await courseData.save();
 
         userData.enrolledCourses.push(courseData._id);
         await userData.save();
 
+        // Update the purchase status to 'completed'
+        console.log("Updating purchase status to 'completed'");
         purchaseData.status = "completed";
         await purchaseData.save();
+
+        console.log("Purchase status updated to 'completed'");
+
         break;
       }
 
@@ -168,6 +179,7 @@ export const stripeWebhooks = async (req, res) => {
 
         purchaseData.status = "failed";
         await purchaseData.save();
+
         break;
       }
 

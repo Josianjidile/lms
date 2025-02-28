@@ -114,7 +114,7 @@ export const purchaseCourse = async (req, res) => {
     });
 
     // Fallback to 'http://localhost:3000' if origin is undefined
-    const baseOrigin = origin || 'http://localhost:3000';
+    const baseOrigin = origin || 'http://localhost:5173';
 
     // Stripe payment session
     const currency = process.env.CURRENCY.toLowerCase(); // Ensure currency is lowercase
