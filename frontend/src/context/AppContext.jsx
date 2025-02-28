@@ -7,10 +7,10 @@ import humanizeDuration from "humanize-duration";
 export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
-  const currency = import.meta.env.VITE_CURRENCY;
+  const currency = import.meta.env.VITE_CURRENCY; // Adjust based on your env setup
   const [allCourses, setAllCourses] = useState([]);
   const navigate = useNavigate();
-  const [isEducator, setIsEducator] = useState(false); // Default to false
+  const [isEducator, setIsEducator] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
 
   const { getToken } = useAuth();
@@ -18,20 +18,12 @@ export const AppContextProvider = (props) => {
 
   // Fetch all courses
   const fetchAllCourses = async () => {
-    setAllCourses(dummyCourses); // Replace with actual API call
+    setAllCourses(dummyCourses); // Replace with API call
   };
 
   // Fetch user enrolled courses
   const fetchUserEnrolledCourses = async () => {
-    setEnrolledCourses(dummyCourses); // Replace with actual API call
-  };
-
-  // Check if the user is an educator
-  const checkEducatorRole = async () => {
-    if (user) {
-      const role = user.publicMetadata?.role;
-      setIsEducator(role === "educator");
-    }
+    setEnrolledCourses(dummyCourses); // Replace with API call
   };
 
   // Calculate average rating of a course
@@ -71,10 +63,21 @@ export const AppContextProvider = (props) => {
     return totalLectures;
   };
 
+  // Log the token for debugging
+  const logToken = async () => {
+    const token = await getToken();
+    console.log("User token:", token);
+  };
+
   useEffect(() => {
     fetchAllCourses();
     fetchUserEnrolledCourses();
-    checkEducatorRole(); // Check educator role on user change
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      logToken();
+    }
   }, [user]);
 
   const value = {

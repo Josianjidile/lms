@@ -1,9 +1,12 @@
 import express from "express";
-import { updateRoleToEducator } from "../controllers/educatorController.js";
+import { clerkMiddleware } from "@clerk/express";
+import { updateRoleToEducator, addCourse, getEducatorCourses } from "../controllers/educatorController.js";
+import upload from "../config/multer.js";
 
-const router = express.Router();
+const educatorRouter = express.Router();
 
-// Use POST instead of GET for updating user metadata
-router.post("/update-role", updateRoleToEducator);
+educatorRouter.get("/update-role", clerkMiddleware(), updateRoleToEducator);
+educatorRouter.post("/add-course", clerkMiddleware(), upload.single("image"), addCourse);
+educatorRouter.get("/courses", clerkMiddleware(), getEducatorCourses);
 
-export default router;
+export default educatorRouter;
