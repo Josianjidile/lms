@@ -100,7 +100,7 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "payment_intent.completed": {
         const session = event.data.object;
         console.log("Checkout session completed:", session.id);
 
@@ -146,7 +146,7 @@ export const stripeWebhooks = async (req, res) => {
         break;
       }
 
-      case "checkout.session.expired": {
+      case "payment_intent.expired": {
         const session = event.data.object;
         console.log("Checkout session expired:", session.id);
 
