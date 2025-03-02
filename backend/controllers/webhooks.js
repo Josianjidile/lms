@@ -5,8 +5,9 @@ dotenv.config();
 import { Webhook } from "svix";
 import User from "../models/User.js";
 import Purchase from "../models/Purchase.js";
-import Course from "../models/Course.js";
+
 import Stripe from "stripe";
+import Course from "../models/Course.js";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not set in the environment variables");
