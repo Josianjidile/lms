@@ -1,8 +1,7 @@
 import { clerkClient } from "@clerk/express";
+
 export const protectEducator = async (req, res, next) => {
   try {
-    console.log("Auth Data:", req.auth); // Debugging step
-
     const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized: No user ID found" });
 
@@ -17,4 +16,3 @@ export const protectEducator = async (req, res, next) => {
     return res.status(500).json({ success: false, message: "Authentication error" });
   }
 };
-

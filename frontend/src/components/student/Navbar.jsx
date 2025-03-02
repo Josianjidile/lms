@@ -11,19 +11,25 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { isEducator } = useContext(AppContext);
 
-  const { openSignIn } = useClerk();
+  const { openSignIn, openSignUp } = useClerk();
   const { user, isLoaded } = useUser();
 
   const handleSignIn = () => {
     openSignIn({
-      afterSignInUrl: "/",
-      afterSignUpUrl: "/",
+      fallbackRedirectUrl: "/", // Use fallbackRedirectUrl instead of afterSignInUrl
     });
   };
 
-  if (!isLoaded) {
-    return <div>Loading...</div>;
-  }
+  const handleSignUp = () => {
+    openSignUp({
+      captcha: true, // Ensure captcha validation is enabled
+      fallbackRedirectUrl: "/", // Use fallbackRedirectUrl for sign-up redirection
+    });
+  };
+
+  // if (!isLoaded) {
+  //   return <div><Loading</div>;
+  // }
 
   return (
     <div
@@ -53,7 +59,7 @@ const Navbar = () => {
           <UserButton />
         ) : (
           <button
-            onClick={handleSignIn}
+            onClick={handleSignUp} // Changed to handleSignUp for sign-up flow
             className="bg-blue-600 text-white px-5 py-2 rounded-full"
             aria-label="Create Account"
           >
@@ -78,7 +84,7 @@ const Navbar = () => {
           <UserButton />
         ) : (
           <button
-            onClick={handleSignIn}
+            onClick={handleSignUp} // Changed to handleSignUp for sign-up flow
             className="bg-blue-600 text-white px-3 py-1 rounded-full"
             aria-label="Create Account"
           >
