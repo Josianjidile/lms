@@ -94,7 +94,7 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     // Capture raw request body before it's parsed by express
-    const rawBody = await rawBody(req); // Using rawBody directly as a function
+    const rawBody = await rawBody(req); // Use rawBody directly as a function
 
     // Construct the event using the raw request body and signature
     event = stripeInstance.webhooks.constructEvent(rawBody, sig, endpointSecret);
