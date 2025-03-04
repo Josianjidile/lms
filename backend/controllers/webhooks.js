@@ -78,6 +78,8 @@ export const clerkWebhooks = async (req, res) => {
   }
 };
 
+
+
 export const stripeWebhooks = async (req, res) => {
   const sig = req.headers["stripe-signature"]; // Get signature from headers
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -100,7 +102,7 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "paymentIntent.succeeded": {
+      case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
         const paymentIntentId = paymentIntent.id;
 
@@ -112,14 +114,28 @@ export const stripeWebhooks = async (req, res) => {
 
         // Find the purchase record
         const purchaseData = await Purchase.findById(purchaseId);
+        if (!purchaseData) {
+          console.error("Purchase record not found");
+          return res.status(404).json({ error: "Purchase not found" });
+        }
+
+        // Find the user and course data
         const userData = await User.findById(purchaseData.userId);
         const courseData = await Course.findById(purchaseData.courseId.toString());
 
-        courseData.enrolledStudents.push(userData);
+        if (!userData || !courseData) {
+          console.error("User or Course record not found");
+          return res.status(404).json({ error: "User or Course not found" });
+        }
+
+        // Enroll the user in the course and update the records
+        courseData.enrolledStudents.push(userData._id);
         await courseData.save();
+
         userData.enrolledCourses.push(courseData._id);
         await userData.save();
 
+        // Update purchase status to "completed"
         purchaseData.status = "completed";
         await purchaseData.save();
 
@@ -132,14 +148,18 @@ export const stripeWebhooks = async (req, res) => {
         const paymentIntentId = paymentIntent.id;
 
         const session = await stripeInstance.checkout.sessions.list({
-          paymentIntent: paymentIntentId, 
+          paymentIntent: paymentIntentId,
         });
 
         const { purchaseId } = session.data[0].metadata;
 
+        // Find the purchase record and update status to "failed"
         const purchaseData = await Purchase.findById(purchaseId);
-        purchaseData.status = "failed";
-        await purchaseData.save();
+        if (purchaseData) {
+          purchaseData.status = "failed";
+          await purchaseData.save();
+          console.log("Purchase marked as failed due to payment failure");
+        }
         break;
       }
 

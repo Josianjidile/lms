@@ -7,14 +7,14 @@ const PurchaseSchema = new mongoose.Schema(
       ref: "Course",
       required: true,
     },
-    userId: { 
-      type: String, 
-      ref: "User", 
-      required: true 
-    },  // Changed to String (Clerk user ID)
-    amount: { 
-      type: Number, 
-      required: true 
+    userId: {
+      type: String, // Changed to String (Clerk user ID)
+      ref: "User",
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
     },
     status: {
       type: String,
@@ -24,8 +24,6 @@ const PurchaseSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-
 
 const Purchase = mongoose.models.Purchase || mongoose.model("Purchase", PurchaseSchema);
 
