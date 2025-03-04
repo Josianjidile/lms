@@ -67,76 +67,78 @@ export const getEnrolledCourse = async (req, res) => {
 
 
 
+
 const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 export const purchaseCourse = async (req, res) => {
-  try {
-    console.log("Request Body:", req.body);
-      const { courseId } = req.body;
-      const { origin } = req.headers;
-      const userId = req.auth?.userId;
+    console.log("Request Body:", req.body); // Debugging log
+    try {
+        const { courseId } = req.body;
+        const { origin } = req.headers;
+        const userId = req.auth?.userId;
 
-      if (!userId) {
-          return res.status(401).json({ success: false, message: "Unauthorized: User ID missing" });
-      }
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized: User ID missing" });
+        }
 
-      const userData = await User.findById(userId);
-      if (!userData) {
-          return res.status(404).json({ success: false, message: "User not found" });
-      }
+        const userData = await User.findById(userId);
+        if (!userData) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
 
-      const courseData = await Course.findById(courseId);
-      if (!courseData) {
-          return res.status(404).json({ success: false, message: "Course not found" });
-      }
+        const courseData = await Course.findById(courseId);
+        if (!courseData) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
 
-      if (userData.enrolledCourses.includes(courseId)) {
-          return res.status(400).json({ success: false, message: "You are already enrolled in this course" });
-      }
+        if (userData.enrolledCourses.includes(courseId)) {
+            return res.status(400).json({ success: false, message: "You are already enrolled in this course" });
+        }
 
-      const amount = (courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100).toFixed(2);
+        const amount = (courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100).toFixed(2);
 
-      const newPurchase = await Purchase.create({
-          courseId: courseData._id,
-          userId: userData._id,
-          amount,
-          status: "pending",
-      });
+        const newPurchase = await Purchase.create({
+            courseId: courseData._id,
+            userId: userData._id,
+            amount,
+            status: "pending",
+        });
 
-      console.log("Purchase created with ID:", newPurchase._id);
+        console.log("Purchase created with ID:", newPurchase._id);
 
-      const currency = process.env.CURRENCY.toLowerCase();
-      const session = await stripeInstance.checkout.sessions.create({
-          success_url: `${origin}/loading/my-enrollments`,
-          cancel_url: `${origin}/`,
-          payment_method_types: ["card"],
-          line_items: [
-              {
-                  price_data: {
-                      currency,
-                      product_data: {
-                          name: courseData.courseTitle,
-                      },
-                      unit_amount: Math.floor(amount * 100),
-                  },
-                  quantity: 1,
-              },
-          ],
-          mode: "payment",
-          metadata: {
-              purchaseId: newPurchase._id.toString(),
-          },
-      });
+        const currency = process.env.CURRENCY.toLowerCase();
+        const session = await stripeInstance.checkout.sessions.create({
+            success_url: `${origin}/loading/my-enrollments`,
+            cancel_url: `${origin}/`,
+            payment_method_types: ["card"],
+            line_items: [
+                {
+                    price_data: {
+                        currency,
+                        product_data: {
+                            name: courseData.courseTitle,
+                        },
+                        unit_amount: Math.floor(amount * 100),
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: "payment",
+            metadata: {
+                purchaseId: newPurchase._id.toString(),
+            },
+        });
 
-      res.status(200).json({
-          success: true,
-          session_url: session.url,
-      });
-  } catch (error) {
-      console.error("Error processing course purchase:", error);
-      res.status(500).json({
-          success: false,
-          message: "Failed to purchase course",
-          error: error.message,
-      });
-  }
+        res.status(200).json({
+            success: true,
+            session_url: session.url,
+        });
+    } catch (error) {
+        console.error("Error processing course purchase:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to purchase course",
+            error: error.message,
+        });
+    }
 };
