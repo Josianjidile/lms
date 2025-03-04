@@ -1,10 +1,14 @@
 import express from "express";
-import { getEnrolledCourse, getUserData, purchaseCourse } from "../controllers/userController.js";
+import { addUserRating, getEnrolledCourse, getUserCourseProgress, getUserData, purchaseCourse, UpdateUserCourseProgress } from "../controllers/userController.js";
 
 const userRouter = express.Router();
 
 userRouter.get("/data", getUserData);
 userRouter.get("/enrolled-courses", getEnrolledCourse);
 userRouter.post("/purchase", purchaseCourse);
+userRouter.post("/update-course-progress", UpdateUserCourseProgress);
+userRouter.post("/get-course-progress", getUserCourseProgress);
+userRouter.post("/add-rating" ,addUserRating);
 
 export default userRouter;
+
