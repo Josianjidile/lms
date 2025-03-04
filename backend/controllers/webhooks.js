@@ -17,7 +17,7 @@ const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 // Clerk Webhook Handler
-export const clerkWebhook = async (req, res) => {
+export const clerkWebhooks = async (req, res) => {
   try {
     console.log("Received webhook:", JSON.stringify(req.body, null, 2));
 
@@ -100,12 +100,12 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "payment_intent.succeeded": {
-        const payment_intent = event.data.object;
-        const paymentIntentId = payment_intent.id;
+      case "paymentIntent.succeeded": {
+        const paymentIntent = event.data.object;
+        const paymentIntentId = paymentIntent.id;
 
         const session = await stripeInstance.checkout.sessions.list({
-          payment_intent: paymentIntentId,
+          paymentIntent: paymentIntentId,
         });
 
         const { purchaseId } = session.data[0].metadata;
@@ -128,11 +128,11 @@ export const stripeWebhooks = async (req, res) => {
       }
 
       case "payment_intent.payment_failed": {
-        const payment_intent = event.data.object;
-        const paymentIntentId = payment_intent.id;
+        const paymentIntent = event.data.object;
+        const paymentIntentId = paymentIntent.id;
 
         const session = await stripeInstance.checkout.sessions.list({
-          payment_intent: paymentIntentId, 
+          paymentIntent: paymentIntentId, 
         });
 
         const { purchaseId } = session.data[0].metadata;

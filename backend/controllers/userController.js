@@ -12,10 +12,6 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not set in the environment variables");
 }
 
-// Initialize Stripe instance
-const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
 
 // Get user data by ID (from authentication token)
 export const getUserData = async (req, res) => {
@@ -69,64 +65,52 @@ export const getEnrolledCourse = async (req, res) => {
   }
 };
 
-// Purchase Course (Stripe Payment)
+
 export const purchaseCourse = async (req, res) => {
   try {
     const { courseId } = req.body;
-    const { origin } = req.headers; // Origin URL for redirect after payment
-    const userId = req.auth?.userId; // Ensure user is authenticated
+    const { origin } = req.headers; 
 
-    // Check if userId is present
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized: User not found" });
-    }
+    const userId = req.auth?.userId;
 
-    // Find user and course
-    const userData = await User.findById(userId);
+    // Corrected the reference to userId from UserId to userId
+    const userData = await User.findById(userId); 
     const courseData = await Course.findById(courseId);
-
     if (!userData || !courseData) {
-      return res.status(404).json({ success: false, message: "User or Course not found" });
+      return res.status(404).json({ success: false, message: "Data not found" });
     }
 
-    // Check if user is already enrolled
-    if (userData.enrolledCourses.includes(courseId)) {
-      return res.status(400).json({ success: false, message: "You are already enrolled in this course" });
-    }
-
-    // Calculate the final amount after discount
-    const amount = (courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100).toFixed(2);
-
-    // Save purchase record in the database
     const purchaseData = {
       courseId: courseData._id,
-      userId,
-      amount: parseFloat(amount), // Ensure amount is a number
-      status: "pending", // Initial status
+      userId, 
+      amount: (courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100).toFixed(2),
     };
 
     const newPurchase = await Purchase.create(purchaseData);
 
-    const baseOrigin = origin || "http://localhost:5173";
+    const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-    // Stripe payment session
-    const currency = process.env.CURRENCY.toLowerCase(); // Ensure currency is lowercase
-    const session = await stripeInstance.checkout.sessions.create({
-      success_url: `${baseOrigin}/loading/my-enrollments`,
-      cancel_url: `${baseOrigin}/`,
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency,
-            product_data: {
-              name: courseData.courseTitle,
-            },
-            unit_amount: Math.round(newPurchase.amount * 100), // Convert to cents
+    console.log("Purchase created with ID:", newPurchase._id);
+
+    const currency = process.env.CURRENCY.toLowerCase();
+
+    const line_items = [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: courseData.courseTitle,
           },
-          quantity: 1,
+          unit_amount: Math.floor(newPurchase.amount) * 100, // Convert amount to cents
         },
-      ],
+        quantity: 1,
+      },
+    ];
+
+    const session = await stripeInstance.checkout.sessions.create({
+      success_url: `${origin}/loading/my-enrollments`,
+      cancel_url: `${origin}/`,
+      line_items: line_items,
       mode: "payment",
       metadata: {
         purchaseId: newPurchase._id.toString(),
@@ -138,10 +122,10 @@ export const purchaseCourse = async (req, res) => {
       session_url: session.url, // URL for Stripe checkout
     });
   } catch (error) {
-    console.error("Error processing course purchase:", error);
+    console.error("Error processing purchase:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to purchase course",
+      message: "Failed to process purchase",
       error: error.message,
     });
   }
