@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
-import express from "express";
-import rawBody from "raw-body";
+import pkg from 'body-parser';
+const { raw } = pkg;
 
 import { Webhook } from "svix";
 import User from "../models/User.js";
@@ -82,30 +82,25 @@ export const clerkWebhooks = async (req, res) => {
 };
 
 export const stripeWebhooks = async (req, res) => {
-  const sig = req.headers["stripe-signature"];
+  const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!endpointSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET is not set in environment variables");
-    return res.status(500).json({ error: "Webhook secret is not configured" });
+    console.error('STRIPE_WEBHOOK_SECRET is not set in environment variables');
+    return res.status(500).json({ error: 'Webhook secret is not configured' });
   }
 
   let event;
 
   try {
-    // Capture raw request body before it's parsed by express
-    const rawBodyBuffer = await rawBody(req); // Store the raw body as a buffer
+    // Ensure you're using the raw request body for signature verification
+    const rawBodyBuffer = req.body;  // `req.body` is the raw body due to bodyParser.raw()
 
     // Construct the event using the raw request body and signature
-    event = stripeInstance.webhooks.constructEvent(
-      rawBodyBuffer,
-      sig,
-      endpointSecret
-    );
-
+    event = stripeInstance.webhooks.constructEvent(rawBodyBuffer, sig, endpointSecret);
     console.log("Event data received:", JSON.stringify(event, null, 2));
   } catch (err) {
-    console.error("Error verifying webhook signature:", err.message);
+    console.error('Error verifying webhook signature:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
