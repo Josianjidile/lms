@@ -5,8 +5,10 @@ import bodyParser from "body-parser";
 import { clerkMiddleware } from "@clerk/express";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
-import userRouter from "./routes/userRouter.js";
 import { stripeWebhooks, clerkWebhooks } from "./controllers/webhooks.js";
+import userRouter from "./routes/userRouter.js";
+import educatorRouter from "./routes/educatorRoutes.js";
+import courseRouter from "./routes/courseRoute.js";
 
 dotenv.config();
 
@@ -15,10 +17,10 @@ const app = express();
 // ⚠️ STRIPE WEBHOOK: Must use raw body parser for correct signature verification
 app.post("/stripe", bodyParser.raw({ type: "application/json" }), stripeWebhooks);
 
-// Middleware for other routes (does not apply to Stripe webhook)
+// Middleware (applies globally except for Stripe webhook)
 app.use(cors());
-app.use(clerkMiddleware()); 
-app.use(express.json()); // Apply JSON parsing globally except for Stripe webhook
+app.use(clerkMiddleware());
+app.use(express.json());
 
 // Connect to MongoDB & Cloudinary
 await connectDB();
@@ -28,14 +30,8 @@ await connectCloudinary();
 app.get("/", (req, res) => res.send("API is running..."));
 app.post("/clerk", clerkWebhooks);
 app.use("/api/user", userRouter);
-
-
-
-// Test route to verify express.json()
-app.post("/test", (req, res) => {
-  console.log("Test Request Body:", req.body);
-  res.json(req.body);
-});
+app.use("/api/course", courseRouter);
+app.use("/api/educator", educatorRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

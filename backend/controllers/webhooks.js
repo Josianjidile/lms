@@ -5,9 +5,10 @@ const { raw } = pkg;
 
 import { Webhook } from "svix";
 import User from "../models/User.js";
-import Purchase from "../models/Purchase.js";
+// import Purchase from "../models/Purchase.js";
 import Course from "../models/course.js";
 import Stripe from "stripe";
+import Purchase from "../models/Purchase.js";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not set in the environment variables");
