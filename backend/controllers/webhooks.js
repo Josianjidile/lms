@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
-import rawBody from 'raw-body';
+import express from "express";
+import rawBody from "raw-body";
 
 import { Webhook } from "svix";
 import User from "../models/User.js";
@@ -71,7 +71,9 @@ export const clerkWebhooks = async (req, res) => {
 
       default:
         console.log("Unhandled event type:", type);
-        return res.status(400).json({ success: false, message: "Unhandled event type" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Unhandled event type" });
     }
   } catch (error) {
     console.error("Webhook processing error:", error);
@@ -79,10 +81,8 @@ export const clerkWebhooks = async (req, res) => {
   }
 };
 
-
-
 export const stripeWebhooks = async (req, res) => {
-  const sig = req.headers["stripe-signature"]; // Get signature from headers
+  const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!endpointSecret) {
@@ -94,10 +94,14 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     // Capture raw request body before it's parsed by express
-    const rawBody = await rawBody(req); // Use rawBody directly as a function
+    const rawBodyBuffer = await rawBody(req); // Store the raw body as a buffer
 
     // Construct the event using the raw request body and signature
-    event = stripeInstance.webhooks.constructEvent(rawBody, sig, endpointSecret);
+    event = stripeInstance.webhooks.constructEvent(
+      rawBodyBuffer,
+      sig,
+      endpointSecret
+    );
 
     console.log("Event data received:", JSON.stringify(event, null, 2));
   } catch (err) {
@@ -107,23 +111,25 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "paymentIntent.succeeded": {
+      case "payment_intent.succeeded": {
+        // Corrected event type
         const paymentIntent = event.data.object;
         const paymentIntentId = paymentIntent.id;
 
-        // Retrieve the session using the paymentIntentId
         const session = await stripeInstance.checkout.sessions.list({
-          paymentIntent: paymentIntentId,
+          payment_intent: paymentIntentId,
         });
 
         if (!session.data || session.data.length === 0) {
-          console.error("Session not found for payment intent:", paymentIntentId);
+          console.error(
+            "Session not found for payment intent:",
+            paymentIntentId
+          );
           return res.status(404).json({ error: "Session not found" });
         }
 
         const { purchaseId } = session.data[0].metadata;
 
-        // Find the purchase record
         const purchaseData = await Purchase.findById(purchaseId);
         if (!purchaseData) {
           console.error("Purchase record not found for ID:", purchaseId);
@@ -136,14 +142,15 @@ export const stripeWebhooks = async (req, res) => {
           return res.status(404).json({ error: "User not found" });
         }
 
-        const courseData = await Course.findById(purchaseData.courseId.toString());
+        const courseData = await Course.findById(
+          purchaseData.courseId.toString()
+        );
         if (!courseData) {
           console.error("Course not found for ID:", purchaseData.courseId);
           return res.status(404).json({ error: "Course not found" });
         }
 
-        // Enroll user in the course
-        courseData.enrolledStudents.push(userData);
+        courseData.enrolledStudents.push(userData._id); // Changed to _id
         await courseData.save();
         userData.enrolledCourses.push(courseData._id);
         await userData.save();
@@ -157,27 +164,34 @@ export const stripeWebhooks = async (req, res) => {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object;
-        const paymentIntentId = paymentIntent.id;
 
-        // Retrieve the session using the paymentIntentId
+        const paymentIntentId = paymentIntent.id; // Retrieve the session using the paymentIntentId
+
         const session = await stripeInstance.checkout.sessions.list({
           paymentIntent: paymentIntentId,
         });
 
         if (!session.data || session.data.length === 0) {
-          console.error("Session not found for payment intent:", paymentIntentId);
+          console.error(
+            "Session not found for payment intent:",
+            paymentIntentId
+          );
+
           return res.status(404).json({ error: "Session not found" });
         }
 
         const { purchaseId } = session.data[0].metadata;
 
         const purchaseData = await Purchase.findById(purchaseId);
+
         if (!purchaseData) {
           console.error("Purchase record not found for ID:", purchaseId);
+
           return res.status(404).json({ error: "Purchase not found" });
         }
 
         purchaseData.status = "failed";
+
         await purchaseData.save();
         break;
       }
