@@ -70,6 +70,7 @@ export const getEnrolledCourse = async (req, res) => {
 const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const purchaseCourse = async (req, res) => {
   try {
+    console.log("Request Body:", req.body);
       const { courseId } = req.body;
       const { origin } = req.headers;
       const userId = req.auth?.userId;
