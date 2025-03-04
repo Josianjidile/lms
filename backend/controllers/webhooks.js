@@ -94,8 +94,8 @@ export const stripeWebhooks = async (req, res) => {
   let event;
 
   try {
-    // ✅ Use the raw body for signature verification
-    const rawBody = req.body; 
+    // ✅ Convert Buffer to string for signature verification
+    const rawBody = req.body.toString();
 
     event = stripeInstance.webhooks.constructEvent(
       rawBody, 

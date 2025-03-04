@@ -12,6 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// ⚠️ STRIPE WEBHOOK: Must use raw body parser for correct signature verification
+app.post("/stripe", bodyParser.raw({ type: "application/json" }), stripeWebhooks);
+
 // Middleware for other routes (does not apply to Stripe webhook)
 app.use(cors());
 app.use(clerkMiddleware()); 
@@ -26,8 +29,7 @@ app.get("/", (req, res) => res.send("API is running..."));
 app.post("/clerk", clerkWebhooks);
 app.use("/api/user", userRouter);
 
-// ⚠️ STRIPE WEBHOOK: Must use raw body parser for correct signature verification
-app.post("/stripe", bodyParser.raw({ type: "application/json" }), stripeWebhooks);
+
 
 // Test route to verify express.json()
 app.post("/test", (req, res) => {
