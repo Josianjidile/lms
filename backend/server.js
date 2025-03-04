@@ -14,7 +14,7 @@ const app = express();
 
 app.use(cors());
 app.use(clerkMiddleware());
-app.use(express.json()); // Correct placement of express.json()
+app.use(express.json()); // Global JSON body parser
 
 // Connect to MongoDB & Cloudinary
 await connectDB();
@@ -22,8 +22,10 @@ await connectCloudinary();
 
 // Routes
 app.get("/", (req, res) => res.send("API is running..."));
-app.post("/clerk", express.json(), clerkWebhooks);
+app.post("/clerk", clerkWebhooks);  // Removed express.json(), clerkMiddleware handles it
 app.use("/api/user", userRouter);
+
+// Stripe webhook route with raw body parsing for signature verification
 app.post('/stripe', bodyParser.raw({ type: 'application/json' }), stripeWebhooks);
 
 // Test route to verify express.json()

@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
-import buffer from 'raw-body'
+import pkg from 'raw-body';
+const { buffer } = pkg;
 
 import { Webhook } from "svix";
 import User from "../models/User.js";
@@ -107,21 +108,42 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "paymentIntent.succeeded": {
+      case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
         const paymentIntentId = paymentIntent.id;
 
+        // Retrieve the session using the paymentIntentId
         const session = await stripeInstance.checkout.sessions.list({
           paymentIntent: paymentIntentId,
         });
+
+        if (!session.data || session.data.length === 0) {
+          console.error("Session not found for payment intent:", paymentIntentId);
+          return res.status(404).json({ error: "Session not found" });
+        }
 
         const { purchaseId } = session.data[0].metadata;
 
         // Find the purchase record
         const purchaseData = await Purchase.findById(purchaseId);
-        const userData = await User.findById(purchaseData.userId);
-        const courseData = await Course.findById(purchaseData.courseId.toString());
+        if (!purchaseData) {
+          console.error("Purchase record not found for ID:", purchaseId);
+          return res.status(404).json({ error: "Purchase not found" });
+        }
 
+        const userData = await User.findById(purchaseData.userId);
+        if (!userData) {
+          console.error("User not found for ID:", purchaseData.userId);
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        const courseData = await Course.findById(purchaseData.courseId.toString());
+        if (!courseData) {
+          console.error("Course not found for ID:", purchaseData.courseId);
+          return res.status(404).json({ error: "Course not found" });
+        }
+
+        // Enroll user in the course
         courseData.enrolledStudents.push(userData);
         await courseData.save();
         userData.enrolledCourses.push(courseData._id);
@@ -138,13 +160,24 @@ export const stripeWebhooks = async (req, res) => {
         const paymentIntent = event.data.object;
         const paymentIntentId = paymentIntent.id;
 
+        // Retrieve the session using the paymentIntentId
         const session = await stripeInstance.checkout.sessions.list({
-          paymentIntent: paymentIntentId, 
+          paymentIntent: paymentIntentId,
         });
+
+        if (!session.data || session.data.length === 0) {
+          console.error("Session not found for payment intent:", paymentIntentId);
+          return res.status(404).json({ error: "Session not found" });
+        }
 
         const { purchaseId } = session.data[0].metadata;
 
         const purchaseData = await Purchase.findById(purchaseId);
+        if (!purchaseData) {
+          console.error("Purchase record not found for ID:", purchaseId);
+          return res.status(404).json({ error: "Purchase not found" });
+        }
+
         purchaseData.status = "failed";
         await purchaseData.save();
         break;
