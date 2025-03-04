@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
-import pkg from 'raw-body';
-const { buffer } = pkg;
+import rawBody from 'raw-body';
 
 import { Webhook } from "svix";
 import User from "../models/User.js";
@@ -95,7 +94,7 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     // Capture raw request body before it's parsed by express
-    const rawBody = await buffer(req);
+    const rawBody = await rawBody(req); // Using rawBody directly as a function
 
     // Construct the event using the raw request body and signature
     event = stripeInstance.webhooks.constructEvent(rawBody, sig, endpointSecret);
@@ -108,7 +107,7 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      case "payment_intent.succeeded": {
+      case "paymentIntent.succeeded": {
         const paymentIntent = event.data.object;
         const paymentIntentId = paymentIntent.id;
 
