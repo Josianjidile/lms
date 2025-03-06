@@ -14,12 +14,15 @@ import CourseDetails from "./pages/student/CourseDetails";
 import Navbar from "./components/student/Navbar";
 import StudentsEnrolled from "./components/educator/StudentsEnrolled";
 import "quill/dist/quill.core.css";
+import { ToastContainer, toast } from 'react-toastify';
+
 
 const App = () => {
   const isEducatorRoute = useMatch("/educator/*"); // ✅ Move inside the component
 
   return (
     <div className="text-default min-h-screen bg-white">
+       <ToastContainer />
       {!isEducatorRoute && <Navbar />} {/* ✅ Correct Navbar check */}
 
       <Routes>

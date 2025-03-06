@@ -145,7 +145,7 @@ export const purchaseCourse = async (req, res) => {
 
 
 // Update user course progress
-export const UpdateUserCourseProgress = async (req, res) => {
+export const updateUserCourseProgress = async (req, res) => {
   try {
     const userId = req.auth.userId;
     const { courseId, lectureId } = req.body;
@@ -184,7 +184,7 @@ export const UpdateUserCourseProgress = async (req, res) => {
 export const getUserCourseProgress = async (req, res) => {
   try {
     const userId = req.auth.userId;
-    const { courseId, lectureId } = req.body;
+    const { courseId } = req.body;
 
      const progressData = await CourseProgress.findOne({ userId, courseId });
 

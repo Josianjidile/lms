@@ -6,6 +6,8 @@ import { assets } from "../../assets/assets";
 import humanizeDuration from "humanize-duration";
 import Footer from "../../components/student/Footer";
 import YouTube from "react-youtube";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const CourseDetails = () => {
   const { id } = useParams();
@@ -20,16 +22,62 @@ const CourseDetails = () => {
     calculateNoOfLectures,
     calculateChapterTime,
     currency,
+    backendUrl,
+    userData,
+    getToken
   } = useContext(AppContext);
 
+  // Fetch course data (useEffect must not depend on any state that may change the order)
   const fetchCourseData = async () => {
-    const findCourse = allCourses.find((course) => course._id === id);
-    setCourseData(findCourse);
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/course/${id}`);
+      if (data.success) {
+        setCourseData(data.course); // Correct assignment
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
+  const enrollCourse = async () => {
+    try {
+      if (!userData) {
+        return toast.warn('Login to enroll');
+      }
+      if (isAlreadyEnrolled) {
+        return toast.warn('Already enrolled');
+      }
+      const token = await getToken();
+  
+      const { data } = await axios.post(backendUrl + '/api/user/purchase', { courseId: courseData._id }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      if (data.success) {
+        const { session_url } = data;  
+        window.location.replace(session_url);  
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+  
   useEffect(() => {
     fetchCourseData();
-  }, [id, allCourses]);
+  }, []); 
+
+
+
+  useEffect(() => {
+   if(userData && courseData){
+    setIsAlreadyEnrolled(userData.enrolledCourses.includes(courseData._id))
+   }
+  }, [userData,courseData]); 
+
 
   const toggleSection = (index) => {
     setOpenSections((prev) => ({
@@ -46,7 +94,7 @@ const CourseDetails = () => {
     <>
       <div className="flex md:flex-row flex-col-reverse gap-10 relative items-start justify-between md:px-36 px-8 md:pt-30 pt-20 text-left">
         <div className="absolute top-0 left-0 w-full h-section-height -z-1 bg-gradient-to-b from-cyan-100/70"></div>
-        {/* left column */}
+        {/* Left column */}
         <div className="max-w-xl z-10 text-gray-500">
           <h1 className="md:text-course-details-heading-large text-course-details-heading-small font-semibold text-gray-800">
             {courseData.courseTitle}
@@ -57,7 +105,7 @@ const CourseDetails = () => {
               __html: courseData.courseDescription.slice(0, 200),
             }}
           ></p>
-          {/* review and rating */}
+          {/* Review and rating */}
           <div className="flex items-center space-x-2 pt-3 pb-1 text-sm">
             <p>{calculateRating(courseData)}</p>
             <div className="flex">
@@ -85,7 +133,7 @@ const CourseDetails = () => {
           </div>
           <p className="text-sm">
             Course by{" "}
-            <span className="text-blue-600 underline">jcee gilly</span>
+            <span className="text-blue-600 underline">{courseData.educator.name}</span>
           </p>
           <div className="pt-8 text-gray-800">
             <h2 className="text-xl font-semibold">Course Structure</h2>
@@ -105,9 +153,7 @@ const CourseDetails = () => {
                     <img
                       src={assets.down_arrow_icon}
                       alt="arrow icon"
-                      className={`w-4 h-4 transition-transform ${
-                        openSections[index] ? "rotate-180" : ""
-                      }`}
+                      className={`w-4 h-4 transition-transform ${openSections[index] ? "rotate-180" : ""}`}
                     />
                     <p className="font-medium md:text-base text-sm">
                       {chapter.chapterTitle}
@@ -144,9 +190,7 @@ const CourseDetails = () => {
                                 <p
                                   onClick={() =>
                                     setPlayerData({
-                                      videoId: lecture.lectureUrl
-                                        .split("/")
-                                        .pop(),
+                                      videoId: lecture.lectureUrl.split("/").pop(),
                                     })
                                   }
                                   className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full cursor-pointer"
@@ -171,9 +215,7 @@ const CourseDetails = () => {
             ))}
           </div>
           <div className="py-20 text-sm md:text-default">
-            <h3 className="text-xl font-semibold text-gray-800">
-              course description
-            </h3>
+            <h3 className="text-xl font-semibold text-gray-800">Course Description</h3>
             <p
               className="pt-3 rich-text"
               dangerouslySetInnerHTML={{
@@ -183,7 +225,7 @@ const CourseDetails = () => {
           </div>
         </div>
 
-        {/* right column */}
+        {/* Right column */}
         <div className="max-w-course-card z-10 shadow-custom-card rounded-t md:rounded-none overflow-hidden bg-white min-w-[300px] sm:min--w-[420px]">
           {playerData ? (
             <YouTube
@@ -194,7 +236,6 @@ const CourseDetails = () => {
           ) : (
             <img src={courseData.courseThumbnail} alt="" />
           )}
-       
           <div className="p-5">
             <div className="flex items-center gap-2">
               <img
@@ -202,13 +243,12 @@ const CourseDetails = () => {
                 src={assets.time_left_clock_icon}
                 alt="time left icon"
               />
-
               <p className="text-red-500">
                 {" "}
                 <span className=" font-medium">5 days left at this price</span>
               </p>
             </div>
-            <div className=" flex gap-3 items-center pt-2">
+            <div className="flex gap-3 items-center pt-2">
               <p className="text-gray-800 md:text-4xl font-semibold">
                 {currency}
                 {(
@@ -224,7 +264,7 @@ const CourseDetails = () => {
                 {courseData.discount} % off
               </p>
             </div>
-            <div className=" flex items-center text-sm md:text-default gap-4 pt-2 md:pt-4 text-gray-500">
+            <div className="flex items-center text-sm md:text-default gap-4 pt-2 md:pt-4 text-gray-500">
               <div className="flex items-center gap-1">
                 <img src={assets.star} alt="star icon" />
                 <p>{calculateRating(courseData)}</p>
@@ -236,20 +276,20 @@ const CourseDetails = () => {
               </div>
               <div className="h-4 w-px bg-gray-500/40"></div>
               <div className="flex items-center gap-1">
-                <img src={assets.lesson_icon} alt="time clock icon" />
+                <img src={assets.lesson_icon} alt="lesson icon" />
                 <p>{calculateNoOfLectures(courseData)} lessons</p>
               </div>
             </div>
-            <button className="md:mt-6 mt-4 w-full py-3 rounded bg-blue-600 text-white font-medium">
-              {isAlreadyEnrolled ? "already enrolled" : "enroll now"}
+            <button onClick={enrollCourse} className="md:mt-6 mt-4 w-full py-3 rounded bg-blue-600 text-white font-medium">
+              {isAlreadyEnrolled ? "Already enrolled" : "Enroll now"}
             </button>
             <div className="pt-6">
               <p className="md:text-xl text-lg font-medium text-gray-800">
-                what's in this course?
+                What's in this course?
               </p>
               <ul className="ml-4 pt-2 text-sm md:text-default list-disc text-gray">
-                <li>life time access with free update</li>
-                <li>step-by-step hands on projects guidance</li>
+                <li>Lifetime access with free updates</li>
+                <li>Step-by-step hands-on project guidance</li>
                 <li>Access to a community of learners</li>
                 <li>Certificate of completion</li>
               </ul>
