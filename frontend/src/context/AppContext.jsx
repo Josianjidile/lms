@@ -34,11 +34,17 @@ export const AppContextProvider = (props) => {
     }
   };
 
-  // Fetch user data
+  // Fetch user data only if user is logged in
   const fetchUserData = async () => {
+    if (!user) {
+      console.log("User not authenticated, skipping fetchUserData");
+      return; // Do nothing if user is not authenticated
+    }
+
     if (user.publicMetadata.role === "educator") {
       setIsEducator(true);
     }
+
     try {
       const token = await getToken();
 
@@ -62,8 +68,13 @@ export const AppContextProvider = (props) => {
     }
   };
 
-  // Fetch user enrolled courses
+  // Fetch user enrolled courses only if user is logged in
   const fetchUserEnrolledCourses = async () => {
+    if (!user) {
+      console.log("User not authenticated, skipping fetchUserEnrolledCourses");
+      return; // Do nothing if user is not authenticated
+    }
+
     try {
       const token = await getToken();
       const { data } = await axios.get(`${backendUrl}/api/user/enrolled-courses`, {
@@ -118,15 +129,11 @@ export const AppContextProvider = (props) => {
     return totalLectures;
   };
 
-
   useEffect(() => {
     fetchAllCourses();
-    fetchUserEnrolledCourses();
-  }, []);
-
-  useEffect(() => {
     if (user) {
       fetchUserData();
+      fetchUserEnrolledCourses();
     }
   }, [user]);
 
