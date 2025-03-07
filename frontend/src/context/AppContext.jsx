@@ -1,29 +1,84 @@
 import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { dummyCourses } from "../assets/assets"; // Replace with actual API call
+import { toast } from "react-toastify";
+import axios from "axios";
 import humanizeDuration from "humanize-duration";
 
 export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const currency = import.meta.env.VITE_CURRENCY; // Adjust based on your env setup
   const [allCourses, setAllCourses] = useState([]);
   const navigate = useNavigate();
   const [isEducator, setIsEducator] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [userData, setUserData] = useState(null);
 
   const { getToken } = useAuth();
   const { user } = useUser();
 
   // Fetch all courses
   const fetchAllCourses = async () => {
-    setAllCourses(dummyCourses); // Replace with API call
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/course/all`);
+      if (data.success) {
+        setAllCourses(data.courses);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch courses.");
+    }
+  };
+
+  // Fetch user data
+  const fetchUserData = async () => {
+    if (user.publicMetadata.role === "educator") {
+      setIsEducator(true);
+    }
+    try {
+      const token = await getToken();
+
+      if (!token) {
+        toast.error("Authentication token missing.");
+        return;
+      }
+
+      const { data } = await axios.get(`${backendUrl}/api/user/data`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setUserData(data.user);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch user data.");
+    }
   };
 
   // Fetch user enrolled courses
   const fetchUserEnrolledCourses = async () => {
-    setEnrolledCourses(dummyCourses); // Replace with API call
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/user/enrolled-courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setEnrolledCourses(data.enrolledCourses.reverse());
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching enrolled courses:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch enrolled courses.");
+    }
   };
 
   // Calculate average rating of a course
@@ -33,7 +88,7 @@ export const AppContextProvider = (props) => {
     course.courseRatings.forEach((rating) => {
       totalRating += rating.rating;
     });
-    return totalRating / course.courseRatings.length;
+    return Math.floor(totalRating / course.courseRatings.length);
   };
 
   // Calculate chapter time duration
@@ -63,11 +118,6 @@ export const AppContextProvider = (props) => {
     return totalLectures;
   };
 
-  // Log the token for debugging
-  const logToken = async () => {
-    const token = await getToken();
-    console.log("User token:", token);
-  };
 
   useEffect(() => {
     fetchAllCourses();
@@ -76,7 +126,7 @@ export const AppContextProvider = (props) => {
 
   useEffect(() => {
     if (user) {
-      logToken();
+      fetchUserData();
     }
   }, [user]);
 
@@ -91,6 +141,11 @@ export const AppContextProvider = (props) => {
     calculateNoOfLectures,
     calculateChapterTime,
     fetchUserEnrolledCourses,
+    backendUrl,
+    userData,
+    setUserData,
+    getToken,
+    fetchAllCourses,
   };
 
   return (

@@ -64,3 +64,98 @@ export const getEducatorCourses = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to retrieve courses", error: error.message });
   }
 };
+
+
+// Get educator dashboard data
+export const getEducatorDashboard = async (req, res) => {
+  try {
+    const educatorId = req.auth?.userId;
+
+    if (!educatorId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: No user ID found" });
+    }
+
+    // Get educator's courses
+    const courses = await Course.find({ educator: educatorId });
+    const totalCourses = courses.length;
+
+    // Get course IDs
+    const courseIds = courses.map((course) => course._id);
+
+    // Get completed purchases for these courses
+    const purchases = await Purchase.find({ courseId: { $in: courseIds }, status: "completed" });
+
+    // Calculate total earnings
+    const totalEarnings = purchases.reduce((sum, purchase) => sum + purchase.amount, 0);
+
+    // Collect enrolled students with their course titles
+    const enrolledStudentsData = [];
+    for (const course of courses) {
+      const students = await User.find(
+        { _id: { $in: course.enrolledStudents } },
+        "name imageUrl"
+      );
+      students.forEach((student) => {
+        enrolledStudentsData.push({
+          courseTitle: course.courseTitle,
+          student,
+        });
+      });
+    }
+
+    res.json({
+      success: true,
+      dashboardData: {
+        totalCourses,
+        totalEarnings,
+        enrolledStudents: enrolledStudentsData,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching educator dashboard data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load dashboard data",
+      error: error.message,
+    });
+  }
+};
+
+// Get enrolled students data with purchase details
+export const getEnrolledStudentsData = async (req, res) => {
+  try {
+    const educatorId = req.auth?.userId;
+
+    if (!educatorId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: No user ID found" });
+    }
+
+    // Find educator's courses
+    const courses = await Course.find({ educator: educatorId });
+    const courseIds = courses.map((course) => course._id);
+
+    // Find completed purchases with user and course details
+    const purchases = await Purchase.find({
+      courseId: { $in: courseIds },
+      status: "completed",
+    })
+      .populate("userId", "name imageUrl")
+      .populate("courseId", "courseTitle");
+
+    // Map data correctly
+    const enrolledStudents = purchases.map((purchase) => ({
+      student: purchase.userId,
+      courseTitle: purchase.courseId.courseTitle,
+      purchaseDate: purchase.createdAt,
+    }));
+
+    res.json({ success: true, enrolledStudents });
+  } catch (error) {
+    console.error("Error fetching enrolled students data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve enrolled students",
+      error: error.message,
+    });
+  }
+};

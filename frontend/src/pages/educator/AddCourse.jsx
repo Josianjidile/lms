@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import uniqid from "uniqid";
 import Quill from "quill";
-import "quill/dist/quill.snow.css"; // Import Quill styles
+import "quill/dist/quill.snow.css"; 
 import { assets } from "../../assets/assets";
+import { AppContext } from "../../context/AppContext";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const AddCourse = () => {
   const quillRef = useRef(null);
   const editorRef = useRef(null);
+  const { backendUrl, getToken } = useContext(AppContext);
 
   const [courseTitle, setCourseTitle] = useState("");
   const [coursePrice, setCoursePrice] = useState(0);
@@ -21,6 +25,26 @@ const AddCourse = () => {
     lectureUrl: "",
     isPreviewFree: false,
   });
+
+  // Handle price change
+  const handlePriceChange = (e) => {
+    const value = Number(e.target.value);
+    if (value <= 0) {
+      toast.error("Price must be greater than 0");
+    } else {
+      setCoursePrice(value);
+    }
+  };
+
+  // Handle discount change
+  const handleDiscountChange = (e) => {
+    const value = Number(e.target.value);
+    if (value < 0 || value > 100) {
+      toast.error("Discount must be between 0 and 100");
+    } else {
+      setDiscount(value);
+    }
+  };
 
   // Handle chapter actions (add, remove, toggle)
   const handleChapter = (action, chapterId) => {
@@ -56,7 +80,7 @@ const AddCourse = () => {
   // Add a new lecture to a chapter
   const addLecture = () => {
     if (!currentChapterId) return;
-
+  
     const updatedChapters = chapters.map((chapter) => {
       if (chapter.chapterId === currentChapterId) {
         return {
@@ -65,6 +89,7 @@ const AddCourse = () => {
             ...chapter.chapterContent,
             {
               lectureId: uniqid(),
+              lectureOrder: chapter.chapterContent.length + 1, // Ensure lectureOrder is included
               ...lectureDetails,
             },
           ],
@@ -72,7 +97,7 @@ const AddCourse = () => {
       }
       return chapter;
     });
-
+  
     setChapters(updatedChapters);
     setShowPopup(false);
     setLectureDetails({
@@ -81,6 +106,47 @@ const AddCourse = () => {
       lectureUrl: "",
       isPreviewFree: false,
     });
+  };
+  
+  const handleSubmit = async (e) => {
+    try {
+      e.preventDefault();
+      if (!image) {
+        toast.error('Thumbnail not selected');
+        return;
+      }
+
+      const courseData = {
+        courseTitle,
+        courseDescription: quillRef.current.root.innerHTML,
+        coursePrice: Number(coursePrice),
+        discount: Number(discount),
+        courseContent: chapters,
+      };
+
+      const formData = new FormData();
+      formData.append('courseData', JSON.stringify(courseData));
+      formData.append('image', image);
+
+      const token = await getToken();
+      const { data } = await axios.post(`${backendUrl}/api/educator/add-course`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        setCourseTitle('');
+        setCoursePrice(0);
+        setDiscount(0);
+        setImage(null);
+        setChapters([]);
+        quillRef.current.root.innerHTML = "";
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   // Initialize Quill editor
@@ -96,7 +162,7 @@ const AddCourse = () => {
   return (
     <div className="h-screen overflow-scroll flex flex-col items-start justify-between md:p-8 md:pb-0">
       {/* Course Details Form */}
-      <form className="flex flex-col gap-4 max-w-md w-full text-gray-500">
+      <form className="flex flex-col gap-4 max-w-md w-full text-gray-500" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-1">
           <p>Course Title</p>
           <input
@@ -121,7 +187,7 @@ const AddCourse = () => {
             <input
               type="number"
               value={coursePrice}
-              onChange={(e) => setCoursePrice(Number(e.target.value))}
+              onChange={handlePriceChange}
               placeholder="0"
               className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500"
               required
@@ -138,7 +204,6 @@ const AddCourse = () => {
                 id="thumbnailImage"
                 accept="image/*"
                 hidden
-                required
               />
               {image && <img src={URL.createObjectURL(image)} className="max-h-10" alt="Thumbnail preview" />}
             </label>
@@ -150,7 +215,7 @@ const AddCourse = () => {
           <input
             type="number"
             value={discount}
-            onChange={(e) => setDiscount(Number(e.target.value))}
+            onChange={handleDiscountChange}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500"
           />
         </div>
@@ -186,11 +251,10 @@ const AddCourse = () => {
                 {chapter.chapterContent.map((lecture, lectureIndex) => (
                   <div key={lecture.lectureId} className="flex justify-between items-center mb-2">
                     <span>
-                      {lectureIndex + 1}. {lecture.lectureTitle} - {lecture.lectureDuration} mins -
+                      {lectureIndex + 1}. {lecture.lectureTitle} - {lecture.lectureDuration} mins - 
                       <a href={lecture.lectureUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 ml-1">
                         Link
-                      </a>{" "}
-                      - {lecture.isPreviewFree ? "Free Preview" : "Paid"}
+                      </a> - {lecture.isPreviewFree ? "Free Preview" : "Paid"}
                     </span>
                     <img src={assets.dropdown_icon} width={14} alt="" className="cursor-pointer" />
                   </div>
@@ -283,4 +347,4 @@ const AddCourse = () => {
   );
 };
 
-export default AddCourse; 
+export default AddCourse;

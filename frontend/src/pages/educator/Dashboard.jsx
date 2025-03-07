@@ -1,25 +1,43 @@
 import React, { useContext, useEffect, useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
 import { AppContext } from "../../context/AppContext";
-import { assets, dummyDashboardData } from "../../assets/assets";
+import { assets } from "../../assets/assets";
 import Loading from "../../components/student/Loading";
 
 const Dashboard = () => {
-  const { currency } = useContext(AppContext);
+  const { currency, backendUrl, isEducator, getToken } = useContext(AppContext);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      // Simulate an API call
-      setTimeout(() => {
-        setDashboardData(dummyDashboardData);
-        setLoading(false);
-      }, 1000); // Simulate a 1-second delay
-    };
-    fetchDashboardData();
-  }, []);
+  const fetchDashboardData = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/educator/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  if (loading) {
+      console.log("Fetched Data:", data); // Check the data in the console
+
+      if (data.success) {
+        setDashboardData(data.dashboardData); // Set the correct data
+      } else {
+        toast.error(data.message);
+      }
+      setLoading(false); // Stop loading after fetching data
+    } catch (error) {
+      toast.error(error.message);
+      setLoading(false); // Stop loading on error
+    }
+  };
+
+  useEffect(() => {
+    if (isEducator) {
+      fetchDashboardData();
+    }
+  }, [isEducator]);
+
+  if (loading || !dashboardData) {
     return <Loading />;
   }
 
@@ -33,7 +51,7 @@ const Dashboard = () => {
             <img src={assets.patients_icon} alt="students_icon" className="w-10 h-10" />
             <div>
               <p className="text-2xl font-medium text-gray-600">
-                {dashboardData.enrolledStudentsData.length}
+                {dashboardData.enrolledStudents.length} {/* Accessing enrolledStudents array length */}
               </p>
               <p className="text-sm text-gray-500">Enrolled Students</p>
             </div>
@@ -44,7 +62,7 @@ const Dashboard = () => {
             <img src={assets.appointments_icon} alt="courses_icon" className="w-10 h-10" />
             <div>
               <p className="text-2xl font-medium text-gray-600">
-                {dashboardData.totalCourses}
+                {dashboardData.totalCourses} {/* Accessing totalCourses */}
               </p>
               <p className="text-sm text-gray-500">Total Courses</p>
             </div>
@@ -56,7 +74,7 @@ const Dashboard = () => {
             <div>
               <p className="text-2xl font-medium text-gray-600">
                 {currency}
-                {dashboardData.totalEarnings}
+                {dashboardData.totalEarnings} {/* Accessing totalEarnings */}
               </p>
               <p className="text-sm text-gray-500">Total Earnings</p>
             </div>
@@ -75,7 +93,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="text-sm text-gray-500">
-              {dashboardData.enrolledStudentsData.map((item, index) => (
+              {dashboardData.enrolledStudents.map((item, index) => (
                 <tr key={index} className="border-b border-gray-500/20">
                   {/* Row Number */}
                   <td className="px-4 py-3">{index + 1}</td>

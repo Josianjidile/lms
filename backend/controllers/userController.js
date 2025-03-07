@@ -5,6 +5,7 @@ dotenv.config();
 import User from "../models/User.js";
 import Purchase from "../models/Purchase.js";
 import Course from "../models/course.js";
+import CourseProgress from "../models/CourseProgress.js";
 import Stripe from "stripe";
 
 // Ensure Stripe secret key is set
@@ -197,36 +198,43 @@ export const getUserCourseProgress = async (req, res) => {
 
  //add user rating course
 
- export  const addUserRating = async (req , res) => {
+ export const addUserRating = async (req, res) => {
   const userId = req.auth.userId;
-  const {courseId,rating}= req.body;
+  const { courseId, rating } = req.body;
 
-  
-  if(!courseId || !userId || rating || rating > 1 || rating > 5){
-    res.status(500).json({ success: false, message: "invalid details" });
+  // Check for invalid rating input
+  if (!courseId || !userId || rating < 1 || rating > 5) {
+    return res.status(400).json({ success: false, message: "Invalid rating. Rating must be between 1 and 5." });
   }
+
   try {
     const course = await Course.findById(courseId);
-    if(!course)
-      res.status(500).json({ success: false, message: "course not found" });
-
-    const user= await User.findById(userId);
-
-    if(!user || !user.enrolledCourses.includes(courseId)){
-      res.status(500).json({ success: false, message: "user has not purchased this course." });
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    const existingRatingIndex = course.courseRatings.findIndex(r=> r.userId === userId)
+    const user = await User.findById(userId);
 
-    if(existingRatingIndex > 1)
-    {
+    if (!user || !user.enrolledCourses.includes(courseId)) {
+      return res.status(403).json({ success: false, message: "User has not purchased this course." });
+    }
+
+    const existingRatingIndex = course.courseRatings.findIndex(r => r.userId === userId);
+
+    if (existingRatingIndex > -1) {
+      // Update existing rating
       course.courseRatings[existingRatingIndex].rating = rating;
-    }else{
-      course.courseRatings.push({userId,rating})
+    } else {
+      // Add new rating
+      course.courseRatings.push({ userId, rating });
     }
+
     await course.save();
-    res.status(500).json({ success: true, message: "rating added" });
+
+    return res.status(200).json({ success: true, message: "Rating added successfully" });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error adding rating:", error);
+    return res.status(500).json({ success: false, message: "Failed to add rating", error: error.message });
   }
- }
+};
+

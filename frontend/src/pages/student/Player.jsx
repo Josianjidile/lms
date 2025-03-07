@@ -6,19 +6,37 @@ import { useParams } from "react-router-dom";
 import YouTube from "react-youtube";
 import Footer from "../../components/student/Footer";
 import Rating from "../../components/student/Rating";
+import { toast } from "react-toastify";
+import Loading from "../../components/student/Loading";
+import axios from "axios";
 
 const Player = () => {
-  const { enrolledCourses, calculateChapterTime, allCourses } =
+  const { enrolledCourses, calculateChapterTime, allCourses, getToken, userData, backendUrl, FetchUserEnrolledCourses } =
     useContext(AppContext);
   const { courseId } = useParams();
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});
   const [playerData, setPlayerData] = useState(null);
+  const [progressData, setProgressData] = useState(null);
+  const [initialRating, setInitialRating] = useState(0);
+  const [loading, setLoading] = useState(true); // Add loading state
 
   const getCourseData = () => {
     const course = enrolledCourses.find((course) => course._id === courseId);
     if (course) {
       setCourseData(course);
+      // Ensure courseRatings exists before calling map
+      if (course.courseRatings && Array.isArray(course.courseRatings)) {
+        course.courseRatings.map((item) => {
+          if (item.userId === userData._id) {
+            setInitialRating(item.rating);
+          }
+        });
+      } else {
+        console.warn("courseRatings is undefined or not an array");
+      }
+    } else {
+      console.warn("Course not found");
     }
   };
 
@@ -29,12 +47,77 @@ const Player = () => {
     }));
   };
 
-  useEffect(() => {
-    getCourseData();
-  }, [courseId, enrolledCourses]); // Use `courseId` and `enrolledCourses` as dependencies
+  const markLectureAsCompleted = async (lectureId) => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/update-course-progress`,
+        { courseId, lectureId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getCourseProgress(); // Refresh progress data after marking the lecture
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
-  if (!courseData) {
-    return <div>Loading...</div>;
+  const getCourseProgress = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/get-course-progress`,
+        { courseId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        setProgressData(data.progressData);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleRate = async (rating) => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/add-rating`,
+        { courseId, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        FetchUserEnrolledCourses();
+        // Update the local state to reflect the rating immediately
+        setInitialRating(rating);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (enrolledCourses.length > 0) {
+      getCourseData();
+    }
+  }, [courseId, enrolledCourses]);
+
+  useEffect(() => {
+    getCourseProgress();
+    setLoading(false); // Stop loading after course progress is fetched
+  }, [courseId]); // Re-fetch progress when courseId changes
+
+  if (loading || !courseData) {
+    return <Loading />; // Show loading indicator while fetching data
   }
 
   return (
@@ -73,53 +156,57 @@ const Player = () => {
                 {openSections[index] && (
                   <div className="space-y-3 px-4 pb-4">
                     <ul className="space-y-2">
-                      {chapter.chapterContent.map((lecture, i) => (
-                        <li
-                          key={i}
-                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={
-                                lecture.isCompleted
-                                  ? assets.blue_tick_icon
-                                  : assets.play_icon
-                              }
-                              alt="play icon"
-                              className="w-4 h-4 mt-1"
-                            />
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">
-                                {lecture.lectureTitle}
+                      {chapter.chapterContent.map((lecture, i) => {
+                        const { lectureId, lectureTitle, lectureUrl, lectureDuration } = lecture;
+                        return (
+                          <li
+                            key={i}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={
+                                  progressData &&
+                                  progressData.lectureCompleted.includes(lectureId)
+                                    ? assets.blue_tick_icon
+                                    : assets.play_icon
+                                }
+                                alt="play icon"
+                                className="w-4 h-4 mt-1"
+                              />
+                              <div>
+                                <p className="text-sm font-medium text-gray-700">
+                                  {lectureTitle}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <div>
+                                {lectureUrl && (
+                                  <p
+                                    onClick={() =>
+                                      setPlayerData({
+                                        ...lecture,
+                                        chapter: index + 1,
+                                        lecture: i + 1,
+                                      })
+                                    }
+                                    className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full cursor-pointer"
+                                  >
+                                    Watch
+                                  </p>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {humanizeDuration(
+                                  lectureDuration * 60 * 1000,
+                                  { units: ["h", "m"] }
+                                )}
                               </p>
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <div>
-                              {lecture.lectureUrl && (
-                                <p
-                                  onClick={() =>
-                                    setPlayerData({
-                                      ...lecture,
-                                      chapter: index + 1,
-                                      lecture: i + 1,
-                                    })
-                                  }
-                                  className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full cursor-pointer"
-                                >
-                                  Watch
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {humanizeDuration(
-                                lecture.lectureDuration * 60 * 1000,
-                                { units: ["h", "m"] }
-                              )}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -128,7 +215,7 @@ const Player = () => {
           </div>
           <div className="flex items-center gap-2 py-3 mt-10">
             <h1 className=" text-xl font-bold">Rate This Course:</h1>
-            <Rating initialRating={0}/>
+            <Rating initialRating={initialRating} onRate={handleRate} />
           </div>
         </div>
 
@@ -149,8 +236,13 @@ const Player = () => {
                   Chapter {playerData.chapter}, Lecture {playerData.lecture}:{" "}
                   {playerData.lectureTitle}
                 </p>
-                <button className="w-full py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors">
-                  Mark as Complete
+                <button
+                  onClick={() => markLectureAsCompleted(playerData.lectureId)}
+                  className="w-full py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  {progressData && progressData.lectureCompleted.includes(playerData.lectureId)
+                    ? "Completed"
+                    : "Mark Complete"}
                 </button>
               </div>
             </div>
@@ -169,7 +261,7 @@ const Player = () => {
           )}
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </>
   );
 };
